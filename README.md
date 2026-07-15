@@ -1,6 +1,8 @@
 # 🧠 MindVault AI — Student Operating System
 
-> An AI-powered Student Operating System built with **React**, **TypeScript**, **Express**, **PostgreSQL**, **Prisma ORM**, **JWT Authentication**, and **Groq LPU AI**.
+AI-Powered Student Operating System
+Organize academics, manage assignments, track attendance, plan your timetable, take smart notes, and learn with an integrated AI assistant — all in one platform.
+Student Operating System built with **React**, **TypeScript**, **Express**, **PostgreSQL**, **Prisma ORM**, **JWT Authentication**, and **Groq LPU AI**.
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![React](https://img.shields.io/badge/React-20232A?style=flat-square&logo=react&logoColor=61DAFB)](https://reactjs.org/)
