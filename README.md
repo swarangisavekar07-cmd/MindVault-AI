@@ -25,6 +25,32 @@ Student Operating System built with **React**, **TypeScript**, **Express**, **Po
 
 ---
 
+## Screenshots
+
+**Landing page**
+<img width="1901" height="862" alt="image" src="https://github.com/user-attachments/assets/4b261237-d350-498e-8f03-b37c7e5e801b" />
+**Dashboard**
+<img width="1918" height="862" alt="image" src="https://github.com/user-attachments/assets/3a8546aa-ead1-4c2c-a843-28a97e35b610" />
+<img width="1918" height="862" alt="image" src="https://github.com/user-attachments/assets/971b6e66-986d-423e-ba1f-68b12c9fc3fb" />
+**Subject**
+<img width="1918" height="865" alt="image" src="https://github.com/user-attachments/assets/b3f3000a-17b2-4688-8479-88e1e1149bc5" />
+**Assignments**
+<img width="1918" height="867" alt="image" src="https://github.com/user-attachments/assets/a861dffc-1e03-441e-a36d-5b7fed67453f" />
+**Reminders**
+<img width="1918" height="856" alt="image" src="https://github.com/user-attachments/assets/bba5b947-42c9-4f61-9caa-a10da8c4aa11" />
+**Notes**
+<img width="1918" height="851" alt="image" src="https://github.com/user-attachments/assets/70101a7e-3e83-473e-a7e7-c3222b39b8d7" />
+**Calendar**
+<img width="1918" height="862" alt="image" src="https://github.com/user-attachments/assets/45a60a58-866f-4ef7-adaa-2e0b6fbe9aaf" />
+**Timetable**
+<img width="1918" height="860" alt="image" src="https://github.com/user-attachments/assets/3e140ad0-1810-4bef-bbc9-22bda58b80e1" />
+**AI Assistant**
+<img width="1918" height="857" alt="image" src="https://github.com/user-attachments/assets/baffaf24-eb08-4e86-a0b8-4a59394afd07" />
+**Attendance**
+<img width="1918" height="862" alt="image" src="https://github.com/user-attachments/assets/fcfbf71f-37d9-4c16-8610-620536162d58" />
+
+-----
+
 ## 🛠️ Tech Stack
 
 ### Client (Frontend)
