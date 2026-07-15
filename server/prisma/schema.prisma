@@ -1,0 +1,133 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  name      String
+  major     String
+  year      String
+  createdAt DateTime @default(now())
+
+  subjects         Subject[]
+  classes          TimetableClass[]
+  assignments      Assignment[]
+  reminders        Reminder[]
+  notes            Note[]
+  notifications    AppNotification[]
+  aiConversations  AiConversation[]
+}
+
+// ─── AI Conversation History ──────────────────────────────────────────────────
+
+model AiConversation {
+  id        String      @id @default(uuid())
+  userId    String
+  tool      String      // "chat" | "explain" | "quiz" | etc.
+  title     String
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @default(now())
+
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages  AiMessage[]
+}
+
+model AiMessage {
+  id               String         @id @default(uuid())
+  conversationId   String
+  role             String         // "user" | "assistant"
+  content          String
+  tool             String
+  promptTokens     Int            @default(0)
+  completionTokens Int            @default(0)
+  totalTokens      Int            @default(0)
+  createdAt        DateTime       @default(now())
+
+  conversation     AiConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+}
+
+model Subject {
+  code     String
+  name     String
+  color    String
+  faculty  String
+  attended Int
+  total    Int
+  target   Int
+  userId   String
+
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@id([code, userId])
+}
+
+model TimetableClass {
+  id          String
+  day         String
+  startTime   String
+  endTime     String
+  subjectCode String
+  room        String
+  userId      String
+
+  user        User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@id([id, userId])
+}
+
+model Assignment {
+  id          Int    @id @default(autoincrement())
+  title       String
+  subject     String
+  subjectName String
+  due         String
+  priority    String
+  status      String
+  progress    Int
+  userId      String
+
+  user        User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Reminder {
+  id        Int     @id @default(autoincrement())
+  title     String
+  desc      String
+  time      String
+  priority  String
+  category  String
+  done      Boolean
+  recurring Boolean
+  userId    String
+
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Note {
+  id      Int    @id @default(autoincrement())
+  title   String
+  subject String
+  content String
+  date    String
+  tags    String
+  userId  String
+
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model AppNotification {
+  id     Int     @id @default(autoincrement())
+  type   String
+  title  String
+  msg    String
+  time   String
+  read   Boolean
+  userId String
+
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
