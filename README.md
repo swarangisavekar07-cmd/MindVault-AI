@@ -56,7 +56,7 @@ Student Operating System built with **React**, **TypeScript**, **Express**, **Po
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-username/MindVault-AI.git
+git clone https://github.com/swarangisavekar07-cmd/MindVault-AI.git
 cd MindVault-AI
 
 # Install frontend dependencies
