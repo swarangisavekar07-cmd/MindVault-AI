@@ -54,14 +54,16 @@ model AiMessage {
 }
 
 model Subject {
-  code     String
-  name     String
-  color    String
-  faculty  String
-  attended Int
-  total    Int
-  target   Int
-  userId   String
+  code      String
+  name      String
+  color     String
+  faculty   String
+  attended  Int
+  total     Int
+  target    Int
+  classroom String?
+  semester  String?
+  userId    String
 
   user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   @@id([code, userId])

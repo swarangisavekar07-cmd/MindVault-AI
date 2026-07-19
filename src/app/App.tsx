@@ -57,6 +57,7 @@ import DeleteConfirmDialog from "./components/DeleteConfirmDialog";
 import AssignmentDetailsModal from "./components/AssignmentDetailsModal";
 import AssignmentEditModal from "./components/AssignmentEditModal";
 import SubjectModal, { Subject } from "./components/SubjectModal";
+import { fetchSubjects, createSubject, updateSubject, deleteSubject } from "./services/apiService";
 import TimetableModal, { TimetableClass } from "./components/TimetableModal";
 import {
   DashboardPageSkeleton,
@@ -2119,11 +2120,31 @@ export default function App() {
   // Dynamic check to determine if this is the default demo/development account
   const isDefaultUser = userKey === "alex_mercer_default_id" || user?.email === "alex@university.edu" || token === "alex_mercer_default_id";
 
-  // User-scoped LocalStorage hook declarations (Data Isolation & Persistence per User ID)
-  const [subjects, setSubjects] = useLocalStorageState<Subject[]>(
-    userKey ? `mindvault_subjects_${userKey}` : "mindvault_subjects_guest",
-    isDefaultUser ? INITIAL_SUBJECTS : []
-  );
+  // User-scoped Subject state powered by Express + PostgreSQL backend API
+  const [subjects, setSubjects] = useState<Subject[]>([]);
+
+  // Fetch subjects from backend API when authenticated
+  useEffect(() => {
+    if (token) {
+      fetchSubjects()
+        .then((data) => {
+          if (data && data.length > 0) {
+            setSubjects(data);
+          } else if (isDefaultUser) {
+            // Seed initial subjects to backend if empty for default user
+            Promise.all(INITIAL_SUBJECTS.map(s => createSubject(s)))
+              .then(seeded => setSubjects(seeded))
+              .catch(err => console.warn("Failed to seed subjects to backend:", err));
+          } else {
+            setSubjects([]);
+          }
+        })
+        .catch((err) => console.warn("Failed to fetch subjects from backend:", err));
+    } else {
+      setSubjects([]);
+    }
+  }, [token, isDefaultUser]);
+
   const [timetableClasses, setTimetableClasses] = useLocalStorageState<TimetableClass[]>(
     userKey ? `mindvault_timetable_classes_${userKey}` : "mindvault_timetable_classes_guest",
     isDefaultUser ? INITIAL_TIMETABLE_CLASSES : []
@@ -2509,37 +2530,51 @@ export default function App() {
     notifications: notifications.filter(n => !n.read).length,
   };
 
-  // Shared Subject Store handlers
-  const handleSaveSubject = (sub: Subject) => {
+  // Shared Subject Store handlers (Backend API powered)
+  const handleSaveSubject = async (sub: Subject) => {
     const isEdit = subjects.some(s => s.code === sub.code);
-    if (isEdit) {
-      setSubjects(prev => prev.map(s => s.code === sub.code ? sub : s));
-      triggerToast(`Subject "${sub.code}" edited successfully.`, "success");
-    } else {
-      setSubjects(prev => [...prev, sub]);
-      triggerToast(`Subject "${sub.code}" added to your store.`, "success");
+    try {
+      if (isEdit) {
+        const updated = await updateSubject(sub.code, sub);
+        setSubjects(prev => prev.map(s => s.code === sub.code ? updated : s));
+        triggerToast(`Subject "${sub.code}" edited successfully.`, "success");
+      } else {
+        const created = await createSubject(sub);
+        setSubjects(prev => [...prev, created]);
+        triggerToast(`Subject "${sub.code}" added to your store.`, "success");
+      }
+    } catch (err) {
+      console.error("Subject save failed:", err);
+      triggerToast("Failed to save subject to backend.", "error");
     }
   };
 
-  const handleDeleteSubject = (code: string) => {
-    setSubjects(prev => prev.filter(s => s.code !== code));
-    // Cascade delete related timetable slots
-    setTimetableClasses(prev => prev.filter(c => c.subjectCode !== code));
-    triggerToast(`Subject "${code}" and its timetable slots deleted.`, "success");
+  const handleDeleteSubject = async (code: string) => {
+    try {
+      await deleteSubject(code);
+      setSubjects(prev => prev.filter(s => s.code !== code));
+      // Cascade delete related timetable slots
+      setTimetableClasses(prev => prev.filter(c => c.subjectCode !== code));
+      triggerToast(`Subject "${code}" and its timetable slots deleted.`, "success");
+    } catch (err) {
+      console.error("Subject deletion failed:", err);
+      triggerToast("Failed to delete subject from backend.", "error");
+    }
   };
 
-  const handleIncrementAttendance = (code: string, isPresent: boolean) => {
-    setSubjects(prev => prev.map(s => {
-      if (s.code === code) {
-        return {
-          ...s,
-          attended: isPresent ? s.attended + 1 : s.attended,
-          total: s.total + 1
-        };
-      }
-      return s;
-    }));
-    triggerToast(isPresent ? `Marked present today for ${code}.` : `Marked absent today for ${code}.`, "info");
+  const handleIncrementAttendance = async (code: string, isPresent: boolean) => {
+    const targetSub = subjects.find(s => s.code === code);
+    if (!targetSub) return;
+    const newAttended = isPresent ? targetSub.attended + 1 : targetSub.attended;
+    const newTotal = targetSub.total + 1;
+    try {
+      const updated = await updateSubject(code, { attended: newAttended, total: newTotal });
+      setSubjects(prev => prev.map(s => s.code === code ? updated : s));
+      triggerToast(isPresent ? `Marked present today for ${code}.` : `Marked absent today for ${code}.`, "info");
+    } catch (err) {
+      console.error("Attendance update failed:", err);
+      triggerToast("Failed to update attendance on backend.", "error");
+    }
   };
 
   // Timetable planner slots handlers
