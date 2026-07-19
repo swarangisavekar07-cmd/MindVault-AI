@@ -159,22 +159,45 @@ app.get("/api/subjects", authMiddleware, async (req: AuthenticatedRequest, res) 
 });
 
 app.post("/api/subjects", authMiddleware, async (req: AuthenticatedRequest, res) => {
+  const { code, name, color, faculty, attended, total, target, classroom, semester } = req.body;
   try {
+    const subjectData: any = {
+      code,
+      name,
+      color,
+      faculty,
+      attended: Number(attended) || 0,
+      total: Number(total) || 0,
+      target: Number(target) || 75,
+      userId: req.userId!,
+    };
+    if (classroom !== undefined) subjectData.classroom = classroom;
+    if (semester !== undefined) subjectData.semester = semester;
+
     const subject = await prisma.subject.create({
-      data: {
-        ...req.body,
-        userId: req.userId!,
-      },
+      data: subjectData,
     });
     res.status(201).json(subject);
-  } catch (error) {
-    res.status(500).json({ error: "Failed to create subject" });
+  } catch (error: any) {
+    console.error("POST /api/subjects error:", error);
+    res.status(500).json({ error: "Failed to create subject", details: error?.message || String(error) });
   }
 });
 
 app.put("/api/subjects/:code", authMiddleware, async (req: AuthenticatedRequest, res) => {
   const { code } = req.params;
+  const { name, color, faculty, attended, total, target, classroom, semester } = req.body;
   try {
+    const updateData: any = {};
+    if (name !== undefined) updateData.name = name;
+    if (color !== undefined) updateData.color = color;
+    if (faculty !== undefined) updateData.faculty = faculty;
+    if (attended !== undefined) updateData.attended = Number(attended);
+    if (total !== undefined) updateData.total = Number(total);
+    if (target !== undefined) updateData.target = Number(target);
+    if (classroom !== undefined) updateData.classroom = classroom;
+    if (semester !== undefined) updateData.semester = semester;
+
     const subject = await prisma.subject.update({
       where: {
         code_userId: {
@@ -182,11 +205,12 @@ app.put("/api/subjects/:code", authMiddleware, async (req: AuthenticatedRequest,
           userId: req.userId!,
         },
       },
-      data: req.body,
+      data: updateData,
     });
     res.json(subject);
-  } catch (error) {
-    res.status(500).json({ error: "Failed to update subject" });
+  } catch (error: any) {
+    console.error("PUT /api/subjects error:", error);
+    res.status(500).json({ error: "Failed to update subject", details: error?.message || String(error) });
   }
 });
 
