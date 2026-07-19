@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "tsnd --respawn --transpile-only src/index.ts",
-    "build": "tsc",
+    "build": "prisma generate && tsc",
+    "postinstall": "prisma generate",
     "start": "node dist/index.js",
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio",
