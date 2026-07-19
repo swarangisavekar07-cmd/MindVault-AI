@@ -2203,7 +2203,7 @@ export default function App() {
   useEffect(() => {
     const savedToken = localStorage.getItem("mindvault_token");
     if (savedToken && !savedToken.startsWith("ey")) {
-      const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
+      const BASE_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? "https://mindvault-ai-4eey.onrender.com" : "http://localhost:3001");
       fetch(`${BASE_URL}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -2259,7 +2259,7 @@ export default function App() {
   };
 
   const handleLogin = async (emailInput: string, passwordInput: string) => {
-    const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
+    const BASE_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? "https://mindvault-ai-4eey.onrender.com" : "http://localhost:3001");
 
     // 1. Try real backend login
     try {
@@ -2319,7 +2319,7 @@ export default function App() {
 
   const handleRegister = async (data: any) => {
     const { name, email, password, collegeName } = data;
-    const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
+    const BASE_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? "https://mindvault-ai-4eey.onrender.com" : "http://localhost:3001");
     const usersRaw = localStorage.getItem("mindvault_users");
     const users = usersRaw ? JSON.parse(usersRaw) : [];
 

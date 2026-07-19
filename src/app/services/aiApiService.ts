@@ -8,7 +8,7 @@
 // FUTURE STREAMING: Replace the fetch calls here with EventSource / ReadableStream
 // when backend streaming is enabled.
 
-const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
+const BASE_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? "https://mindvault-ai-4eey.onrender.com" : "http://localhost:3001");
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
