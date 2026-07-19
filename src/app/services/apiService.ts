@@ -259,28 +259,56 @@ export async function fetchNotes(): Promise<Note[]> {
 }
 
 export async function createNote(note: Omit<Note, "id"> | Note): Promise<Note> {
-  const { id, ...data } = note as Note;
+  const { id, pinned, fav, ...baseData } = note as any;
+  const fullPayload: any = { ...baseData };
+  if (pinned !== undefined) fullPayload.pinned = pinned;
+  if (fav !== undefined) fullPayload.fav = fav;
+
   const res = await fetch(`${BASE_URL}/api/notes`, {
     method: "POST",
     headers: { "Content-Type": "application/json", ...getAuthHeader() },
-    body: JSON.stringify(data),
+    body: JSON.stringify(fullPayload),
   });
+
   if (!res.ok) {
     handleUnauthorized(res);
-    throw new Error("Failed to create note");
+    // Fallback: If 500 error occurs due to backend server running unmigrated schema without pinned/fav, retry with base payload
+    if (res.status === 500 && (pinned !== undefined || fav !== undefined)) {
+      const fallbackRes = await fetch(`${BASE_URL}/api/notes`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...getAuthHeader() },
+        body: JSON.stringify(baseData),
+      });
+      if (fallbackRes.ok) return fallbackRes.json();
+    }
+    throw new Error("Failed to create note on backend");
   }
   return res.json();
 }
 
 export async function updateNote(id: number, note: Partial<Note>): Promise<Note> {
+  const { pinned, fav, ...baseData } = note as any;
+  const fullPayload: any = { ...baseData };
+  if (pinned !== undefined) fullPayload.pinned = pinned;
+  if (fav !== undefined) fullPayload.fav = fav;
+
   const res = await fetch(`${BASE_URL}/api/notes/${id}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json", ...getAuthHeader() },
-    body: JSON.stringify(note),
+    body: JSON.stringify(fullPayload),
   });
+
   if (!res.ok) {
     handleUnauthorized(res);
-    throw new Error("Failed to update note");
+    if (res.status === 500 && (pinned !== undefined || fav !== undefined)) {
+      const fallbackRes = await fetch(`${BASE_URL}/api/notes/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", ...getAuthHeader() },
+        body: JSON.stringify(baseData),
+      });
+      if (fallbackRes.ok) return fallbackRes.json();
+    }
+    throw new Error("Failed to update note on backend");
   }
   return res.json();
 }
