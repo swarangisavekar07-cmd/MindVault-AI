@@ -113,12 +113,14 @@ model Reminder {
 }
 
 model Note {
-  id      Int    @id @default(autoincrement())
+  id      Int     @id @default(autoincrement())
   title   String
   subject String
   content String
   date    String
   tags    String
+  pinned  Boolean @default(false)
+  fav     Boolean @default(false)
   userId  String
 
   user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)

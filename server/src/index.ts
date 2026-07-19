@@ -259,15 +259,22 @@ app.get("/api/timetable", authMiddleware, async (req: AuthenticatedRequest, res)
 
 app.post("/api/timetable", authMiddleware, async (req: AuthenticatedRequest, res) => {
   try {
+    const { id, day, startTime, endTime, subjectCode, room } = req.body;
     const newClass = await prisma.timetableClass.create({
       data: {
-        ...req.body,
+        id: id || `class_${Date.now()}`,
+        day: day || "Monday",
+        startTime: startTime || "09:00",
+        endTime: endTime || "10:00",
+        subjectCode: subjectCode || "",
+        room: room || "",
         userId: req.userId!,
       },
     });
     res.status(201).json(newClass);
-  } catch (error) {
-    res.status(500).json({ error: "Failed to create timetable class" });
+  } catch (error: any) {
+    console.error("Timetable create error:", error);
+    res.status(500).json({ error: "Failed to create timetable class", details: error?.message });
   }
 });
 
@@ -321,15 +328,23 @@ app.get("/api/assignments", authMiddleware, async (req: AuthenticatedRequest, re
 
 app.post("/api/assignments", authMiddleware, async (req: AuthenticatedRequest, res) => {
   try {
+    const { title, subject, subjectName, due, priority, status, progress } = req.body;
     const assignment = await prisma.assignment.create({
       data: {
-        ...req.body,
+        title: title || "",
+        subject: subject || "",
+        subjectName: subjectName || "",
+        due: due || "",
+        priority: priority || "medium",
+        status: status || "not-started",
+        progress: typeof progress === "number" ? progress : 0,
         userId: req.userId!,
       },
     });
     res.status(201).json(assignment);
-  } catch (error) {
-    res.status(500).json({ error: "Failed to create assignment" });
+  } catch (error: any) {
+    console.error("Assignment create error:", error);
+    res.status(500).json({ error: "Failed to create assignment", details: error?.message });
   }
 });
 
@@ -382,15 +397,23 @@ app.get("/api/reminders", authMiddleware, async (req: AuthenticatedRequest, res)
 
 app.post("/api/reminders", authMiddleware, async (req: AuthenticatedRequest, res) => {
   try {
+    const { title, desc, time, priority, category, done, recurring } = req.body;
     const reminder = await prisma.reminder.create({
       data: {
-        ...req.body,
+        title: title || "",
+        desc: desc || "",
+        time: time || "",
+        priority: priority || "medium",
+        category: category || "personal",
+        done: Boolean(done),
+        recurring: Boolean(recurring),
         userId: req.userId!,
       },
     });
     res.status(201).json(reminder);
-  } catch (error) {
-    res.status(500).json({ error: "Failed to create reminder" });
+  } catch (error: any) {
+    console.error("Reminder create error:", error);
+    res.status(500).json({ error: "Failed to create reminder", details: error?.message });
   }
 });
 
@@ -448,17 +471,23 @@ app.get("/api/notes", authMiddleware, async (req: AuthenticatedRequest, res) => 
 
 app.post("/api/notes", authMiddleware, async (req: AuthenticatedRequest, res) => {
   try {
-    const { tags, ...rest } = req.body;
+    const { title, subject, content, date, tags, pinned, fav } = req.body;
     const note = await prisma.note.create({
       data: {
-        ...rest,
+        title: title || "",
+        subject: subject || "",
+        content: content || "",
+        date: date || "",
         tags: Array.isArray(tags) ? tags.join(",") : tags || "",
+        pinned: Boolean(pinned),
+        fav: Boolean(fav),
         userId: req.userId!,
       },
     });
     res.status(201).json({ ...note, tags: note.tags ? note.tags.split(",") : [] });
-  } catch (error) {
-    res.status(500).json({ error: "Failed to create note" });
+  } catch (error: any) {
+    console.error("Note create error:", error);
+    res.status(500).json({ error: "Failed to create note", details: error?.message });
   }
 });
 
@@ -519,15 +548,21 @@ app.get("/api/notifications", authMiddleware, async (req: AuthenticatedRequest, 
 
 app.post("/api/notifications", authMiddleware, async (req: AuthenticatedRequest, res) => {
   try {
+    const { type, title, msg, time, read } = req.body;
     const notification = await prisma.appNotification.create({
       data: {
-        ...req.body,
+        type: type || "system",
+        title: title || "",
+        msg: msg || "",
+        time: time || "",
+        read: Boolean(read),
         userId: req.userId!,
       },
     });
     res.status(201).json(notification);
-  } catch (error) {
-    res.status(500).json({ error: "Failed to create notification" });
+  } catch (error: any) {
+    console.error("Notification create error:", error);
+    res.status(500).json({ error: "Failed to create notification", details: error?.message });
   }
 });
 
