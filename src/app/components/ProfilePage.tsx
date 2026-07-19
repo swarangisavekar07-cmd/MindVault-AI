@@ -3,6 +3,8 @@ import { User, Award, BookOpen, Clock, FileText, CheckCircle2, GraduationCap, Ca
 import { Assignment, Note, Reminder } from "../data/mockData";
 import { Subject } from "../App";
 
+import { updateUserProfile } from "../services/apiService";
+
 interface ProfilePageProps {
   assignments: Assignment[];
   notes: Note[];
@@ -10,6 +12,7 @@ interface ProfilePageProps {
   subjects: Subject[];
   user: any;
   userKey?: string;
+  onUpdateProfile?: (data: { name?: string; major?: string; year?: string; bio?: string; interests?: string }) => Promise<void>;
 }
 
 export default function ProfilePage({
@@ -19,52 +22,84 @@ export default function ProfilePage({
   subjects,
   user,
   userKey = "default",
+  onUpdateProfile,
 }: ProfilePageProps) {
-  // Bio Persistence Hook
-  const storageBioKey = `mindvault_bio_${userKey}`;
-  const [bio, setBio] = useState<string>(() => {
-    try {
-      return localStorage.getItem(storageBioKey) || "Tell everyone a little about yourself...";
-    } catch (_) {
-      return "Tell everyone a little about yourself...";
-    }
-  });
+  // Bio Persistence
+  const [bio, setBio] = useState<string>(user?.bio || "Tell everyone a little about yourself...");
   const [isEditingBio, setIsEditingBio] = useState(false);
   const [tempBio, setTempBio] = useState(bio);
 
-  // Focus Areas / Interests Persistence Hook
-  const storageInterestsKey = `mindvault_interests_${userKey}`;
+  // Sync state if user prop updates
+  React.useEffect(() => {
+    if (user?.bio) setBio(user.bio);
+    if (user?.interests) {
+      try {
+        setInterests(JSON.parse(user.interests));
+      } catch (_) {
+        setInterests(user.interests.split(","));
+      }
+    }
+  }, [user]);
+
+  // Focus Areas / Interests Persistence
   const [interests, setInterests] = useState<string[]>(() => {
-    try {
-      const saved = localStorage.getItem(storageInterestsKey);
-      if (saved) return JSON.parse(saved);
-    } catch (_) {}
+    if (user?.interests) {
+      try {
+        return JSON.parse(user.interests);
+      } catch (_) {
+        return user.interests.split(",");
+      }
+    }
     return [];
   });
   const [newInterestInput, setNewInterestInput] = useState("");
   const [isAddingInterest, setIsAddingInterest] = useState(false);
 
-  const handleSaveBio = () => {
+  const handleSaveBio = async () => {
     const trimmed = tempBio.trim() || "Tell everyone a little about yourself...";
     setBio(trimmed);
-    localStorage.setItem(storageBioKey, trimmed);
     setIsEditingBio(false);
+    try {
+      if (onUpdateProfile) {
+        await onUpdateProfile({ bio: trimmed });
+      } else {
+        await updateUserProfile({ bio: trimmed });
+      }
+    } catch (err) {
+      console.warn("Failed to save bio to backend:", err);
+    }
   };
 
-  const handleAddInterest = () => {
+  const handleAddInterest = async () => {
     const val = newInterestInput.trim();
     if (!val || interests.includes(val)) return;
     const updated = [...interests, val];
     setInterests(updated);
-    localStorage.setItem(storageInterestsKey, JSON.stringify(updated));
     setNewInterestInput("");
     setIsAddingInterest(false);
+    try {
+      if (onUpdateProfile) {
+        await onUpdateProfile({ interests: JSON.stringify(updated) });
+      } else {
+        await updateUserProfile({ interests: JSON.stringify(updated) });
+      }
+    } catch (err) {
+      console.warn("Failed to save interest to backend:", err);
+    }
   };
 
-  const handleRemoveInterest = (target: string) => {
+  const handleRemoveInterest = async (target: string) => {
     const updated = interests.filter((i) => i !== target);
     setInterests(updated);
-    localStorage.setItem(storageInterestsKey, JSON.stringify(updated));
+    try {
+      if (onUpdateProfile) {
+        await onUpdateProfile({ interests: JSON.stringify(updated) });
+      } else {
+        await updateUserProfile({ interests: JSON.stringify(updated) });
+      }
+    } catch (err) {
+      console.warn("Failed to remove interest on backend:", err);
+    }
   };
 
   // Performance computations

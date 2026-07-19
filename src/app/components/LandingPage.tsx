@@ -65,7 +65,7 @@ export default function LandingPage({
   const faqs = [
     {
       q: "Is my data stored securely?",
-      a: "Yes! MindVault uses advanced client-side architecture. All your notes, schedule logs, and user profiles are stored directly in your browser's localStorage, ensuring 100% database privacy.",
+      a: "Yes! MindVault uses secure cloud PostgreSQL database sync with JWT authentication. All your notes, assignments, timetable schedules, and profile data synchronize seamlessly across all your devices.",
     },
     {
       q: "How does the AI assistant function offline?",

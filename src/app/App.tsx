@@ -57,7 +57,15 @@ import DeleteConfirmDialog from "./components/DeleteConfirmDialog";
 import AssignmentDetailsModal from "./components/AssignmentDetailsModal";
 import AssignmentEditModal from "./components/AssignmentEditModal";
 import SubjectModal, { Subject } from "./components/SubjectModal";
-import { fetchSubjects, createSubject, updateSubject, deleteSubject } from "./services/apiService";
+import {
+  fetchSubjects, createSubject, updateSubject, deleteSubject,
+  fetchTimetable, createTimetableClass, updateTimetableClass, deleteTimetableClass,
+  fetchAssignments, createAssignment, updateAssignment, deleteAssignment,
+  fetchReminders, createReminder, updateReminder, deleteReminder,
+  fetchNotes, createNote, updateNote, deleteNote,
+  fetchNotifications, createNotification, updateNotification, markAllNotificationsRead, clearAllNotifications, deleteNotification,
+  updateUserProfile
+} from "./services/apiService";
 import TimetableModal, { TimetableClass } from "./components/TimetableModal";
 import {
   DashboardPageSkeleton,
@@ -760,10 +768,16 @@ function AssignmentsPage({
     setIsDeleteOpen(true);
   };
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (deleteItem) {
-      setAssignments((prev) => prev.filter((item) => item.id !== deleteItem.id));
-      triggerToast(`Assignment "${deleteItem.title}" deleted successfully.`, "success");
+      try {
+        await deleteAssignment(deleteItem.id);
+        setAssignments((prev) => prev.filter((item) => item.id !== deleteItem.id));
+        triggerToast(`Assignment "${deleteItem.title}" deleted successfully.`, "success");
+      } catch (err) {
+        console.error("Delete assignment failed:", err);
+        triggerToast("Failed to delete assignment from backend.", "error");
+      }
       setIsDeleteOpen(false);
       setDeleteItem(null);
       if (detailsItem && detailsItem.id === deleteItem.id) {
@@ -772,9 +786,15 @@ function AssignmentsPage({
     }
   };
 
-  const handleSaveEdit = (updated: Assignment) => {
-    setAssignments((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
-    triggerToast(`Assignment "${updated.title}" updated successfully.`, "success");
+  const handleSaveEdit = async (updated: Assignment) => {
+    try {
+      const saved = await updateAssignment(updated.id, updated);
+      setAssignments((prev) => prev.map((item) => (item.id === saved.id ? saved : item)));
+      triggerToast(`Assignment "${saved.title}" updated successfully.`, "success");
+    } catch (err) {
+      console.error("Update assignment failed:", err);
+      triggerToast("Failed to update assignment on backend.", "error");
+    }
     setIsEditOpen(false);
     if (detailsItem && detailsItem.id === updated.id) {
       setDetailsItem(updated);
@@ -1072,8 +1092,26 @@ function RemindersPage({
 }) {
   const [filter, setFilter] = useState("all");
 
-  const toggle = (id: number) => setReminders(p => p.map(r => r.id === id ? { ...r, done: !r.done } : r));
-  const del = (id: number) => setReminders(p => p.filter(r => r.id !== id));
+  const toggle = async (id: number) => {
+    const target = reminders.find(r => r.id === id);
+    if (!target) return;
+    const updatedDone = !target.done;
+    try {
+      const updated = await updateReminder(id, { done: updatedDone });
+      setReminders(p => p.map(r => r.id === id ? updated : r));
+    } catch (err) {
+      console.error("Toggle reminder failed:", err);
+    }
+  };
+
+  const del = async (id: number) => {
+    try {
+      await deleteReminder(id);
+      setReminders(p => p.filter(r => r.id !== id));
+    } catch (err) {
+      console.error("Delete reminder failed:", err);
+    }
+  };
 
   const catColors: Record<string, string> = {
     academic: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-400 border-indigo-500/10",
@@ -1260,11 +1298,16 @@ function NotesPage({
     }
   };
 
-  const deleteNote = (id: number, e: React.MouseEvent) => {
+  const deleteNoteItem = async (id: number, e: React.MouseEvent) => {
     e.stopPropagation();
-    setNotes((prev) => prev.filter((n) => n.id !== id));
-    if (active && active.id === id) {
-      setActive(null);
+    try {
+      await deleteNote(id);
+      setNotes((prev) => prev.filter((n) => n.id !== id));
+      if (active && active.id === id) {
+        setActive(null);
+      }
+    } catch (err) {
+      console.error("Delete note failed:", err);
     }
   };
 
@@ -2145,26 +2188,67 @@ export default function App() {
     }
   }, [token, isDefaultUser]);
 
-  const [timetableClasses, setTimetableClasses] = useLocalStorageState<TimetableClass[]>(
-    userKey ? `mindvault_timetable_classes_${userKey}` : "mindvault_timetable_classes_guest",
-    isDefaultUser ? INITIAL_TIMETABLE_CLASSES : []
-  );
-  const [assignments, setAssignments] = useLocalStorageState<Assignment[]>(
-    userKey ? `mindvault_assignments_${userKey}` : "mindvault_assignments_guest",
-    isDefaultUser ? INITIAL_ASSIGNMENTS : []
-  );
-  const [reminders, setReminders] = useLocalStorageState<Reminder[]>(
-    userKey ? `mindvault_reminders_${userKey}` : "mindvault_reminders_guest",
-    isDefaultUser ? INITIAL_REMINDERS : []
-  );
-  const [notes, setNotes] = useLocalStorageState<Note[]>(
-    userKey ? `mindvault_notes_${userKey}` : "mindvault_notes_guest",
-    isDefaultUser ? INITIAL_NOTES : []
-  );
-  const [notifications, setNotifications] = useLocalStorageState<AppNotification[]>(
-    userKey ? `mindvault_notifications_${userKey}` : "mindvault_notifications_guest",
-    isDefaultUser ? INITIAL_NOTIFICATIONS : []
-  );
+  const [timetableClasses, setTimetableClasses] = useState<TimetableClass[]>([]);
+  const [assignments, setAssignments] = useState<Assignment[]>([]);
+  const [reminders, setReminders] = useState<Reminder[]>([]);
+  const [notes, setNotes] = useState<Note[]>([]);
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
+
+  // Fetch all user modules from backend API on login/mount
+  useEffect(() => {
+    if (token) {
+      // Fetch Timetable
+      fetchTimetable()
+        .then(data => {
+          if (data && data.length > 0) setTimetableClasses(data);
+          else if (isDefaultUser) Promise.all(INITIAL_TIMETABLE_CLASSES.map(c => createTimetableClass(c))).then(setTimetableClasses);
+          else setTimetableClasses([]);
+        })
+        .catch(err => console.warn("Failed to fetch timetable:", err));
+
+      // Fetch Assignments
+      fetchAssignments()
+        .then(data => {
+          if (data && data.length > 0) setAssignments(data);
+          else if (isDefaultUser) Promise.all(INITIAL_ASSIGNMENTS.map(a => createAssignment(a))).then(setAssignments);
+          else setAssignments([]);
+        })
+        .catch(err => console.warn("Failed to fetch assignments:", err));
+
+      // Fetch Reminders
+      fetchReminders()
+        .then(data => {
+          if (data && data.length > 0) setReminders(data);
+          else if (isDefaultUser) Promise.all(INITIAL_REMINDERS.map(r => createReminder(r))).then(setReminders);
+          else setReminders([]);
+        })
+        .catch(err => console.warn("Failed to fetch reminders:", err));
+
+      // Fetch Notes
+      fetchNotes()
+        .then(data => {
+          if (data && data.length > 0) setNotes(data);
+          else if (isDefaultUser) Promise.all(INITIAL_NOTES.map(n => createNote(n))).then(setNotes);
+          else setNotes([]);
+        })
+        .catch(err => console.warn("Failed to fetch notes:", err));
+
+      // Fetch Notifications
+      fetchNotifications()
+        .then(data => {
+          if (data && data.length > 0) setNotifications(data);
+          else if (isDefaultUser) Promise.all(INITIAL_NOTIFICATIONS.map(n => createNotification(n))).then(setNotifications);
+          else setNotifications([]);
+        })
+        .catch(err => console.warn("Failed to fetch notifications:", err));
+    } else {
+      setTimetableClasses([]);
+      setAssignments([]);
+      setReminders([]);
+      setNotes([]);
+      setNotifications([]);
+    }
+  }, [token, isDefaultUser]);
 
   // Initialize default seeded user on mount for local storage dev mode
   useEffect(() => {
@@ -2443,55 +2527,88 @@ export default function App() {
     setToasts((prev) => [...prev, { id: Date.now(), message, type }]);
   };
 
-  // Quick Add handlers
-  const handleAddAssignment = (newA: Assignment) => {
-    setAssignments((prev) => [newA, ...prev]);
-    triggerToast(`Assignment "${newA.title}" added successfully.`, "success");
-    setNotifications((prev) => [
-      {
-        id: Date.now(),
-        type: "assignment",
-        title: "New Assignment Created",
-        msg: `"${newA.title}" added under ${newA.subjectName}. Due ${newA.due}.`,
-        time: "Just now",
-        read: false,
-      },
-      ...prev,
-    ]);
+  // Quick Add handlers (Backend API powered)
+  const handleAddAssignment = async (newA: Assignment) => {
+    try {
+      const created = await createAssignment(newA);
+      setAssignments((prev) => [created, ...prev]);
+      triggerToast(`Assignment "${created.title}" added successfully.`, "success");
+
+      try {
+        const notif = await createNotification({
+          type: "assignment",
+          title: "New Assignment Created",
+          msg: `"${created.title}" added under ${created.subjectName}. Due ${created.due}.`,
+          time: "Just now",
+          read: false,
+        });
+        setNotifications((prev) => [notif, ...prev]);
+      } catch (_) {}
+    } catch (err) {
+      console.error("Add assignment failed:", err);
+      triggerToast("Failed to create assignment on backend.", "error");
+    }
   };
 
-  const handleAddNote = (newN: Note) => {
-    setNotes((prev) => [newN, ...prev]);
-    triggerToast(`Note "${newN.title}" created.`, "success");
+  const handleAddNote = async (newN: Note) => {
+    try {
+      const created = await createNote(newN);
+      setNotes((prev) => [created, ...prev]);
+      triggerToast(`Note "${created.title}" created.`, "success");
+    } catch (err) {
+      console.error("Add note failed:", err);
+      triggerToast("Failed to create note on backend.", "error");
+    }
   };
 
-  const handleAddReminder = (newR: Reminder) => {
-    setReminders((prev) => [newR, ...prev]);
-    triggerToast(`Reminder "${newR.title}" scheduled for ${newR.time}.`, "success");
-    setNotifications((prev) => [
-      {
-        id: Date.now(),
-        type: "reminder",
-        title: "Reminder Set",
-        msg: `"${newR.title}" scheduled for ${newR.time}.`,
-        time: "Just now",
-        read: false,
-      },
-      ...prev,
-    ]);
+  const handleAddReminder = async (newR: Reminder) => {
+    try {
+      const created = await createReminder(newR);
+      setReminders((prev) => [created, ...prev]);
+      triggerToast(`Reminder "${created.title}" scheduled for ${created.time}.`, "success");
+
+      try {
+        const notif = await createNotification({
+          type: "reminder",
+          title: "Reminder Set",
+          msg: `"${created.title}" scheduled for ${created.time}.`,
+          time: "Just now",
+          read: false,
+        });
+        setNotifications((prev) => [notif, ...prev]);
+      } catch (_) {}
+    } catch (err) {
+      console.error("Add reminder failed:", err);
+      triggerToast("Failed to create reminder on backend.", "error");
+    }
   };
 
-  // Notification handlers
-  const handleMarkRead = (id: number) => {
-    setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
+  // Notification handlers (Backend API powered)
+  const handleMarkRead = async (id: number) => {
+    try {
+      await updateNotification(id, { read: true });
+      setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
+    } catch (err) {
+      console.error("Mark read failed:", err);
+    }
   };
 
-  const handleDeleteNotif = (id: number) => {
-    setNotifications((prev) => prev.filter((n) => n.id !== id));
+  const handleDeleteNotif = async (id: number) => {
+    try {
+      await deleteNotification(id);
+      setNotifications((prev) => prev.filter((n) => n.id !== id));
+    } catch (err) {
+      console.error("Delete notification failed:", err);
+    }
   };
 
-  const handleMarkAllNotifRead = () => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+  const handleMarkAllNotifRead = async () => {
+    try {
+      await markAllNotificationsRead();
+      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+    } catch (err) {
+      console.error("Mark all read failed:", err);
+    }
   };
 
   // JSON exporter
@@ -2577,21 +2694,34 @@ export default function App() {
     }
   };
 
-  // Timetable planner slots handlers
-  const handleSaveTimetableClass = (slot: TimetableClass) => {
+  // Timetable planner slots handlers (Backend API powered)
+  const handleSaveTimetableClass = async (slot: TimetableClass) => {
     const isEdit = timetableClasses.some(c => c.id === slot.id);
-    if (isEdit) {
-      setTimetableClasses(prev => prev.map(c => c.id === slot.id ? slot : c));
-      triggerToast("Timetable class slot updated.", "success");
-    } else {
-      setTimetableClasses(prev => [...prev, slot]);
-      triggerToast("Class slot added to timetable.", "success");
+    try {
+      if (isEdit) {
+        const updated = await updateTimetableClass(slot.id, slot);
+        setTimetableClasses(prev => prev.map(c => c.id === slot.id ? updated : c));
+        triggerToast("Timetable class slot updated.", "success");
+      } else {
+        const created = await createTimetableClass(slot);
+        setTimetableClasses(prev => [...prev, created]);
+        triggerToast("Class slot added to timetable.", "success");
+      }
+    } catch (err) {
+      console.error("Save timetable slot failed:", err);
+      triggerToast("Failed to save timetable slot to backend.", "error");
     }
   };
 
-  const handleDeleteTimetableClass = (id: string) => {
-    setTimetableClasses(prev => prev.filter(c => c.id !== id));
-    triggerToast("Timetable slot removed.", "success");
+  const handleDeleteTimetableClass = async (id: string) => {
+    try {
+      await deleteTimetableClass(id);
+      setTimetableClasses(prev => prev.filter(c => c.id !== id));
+      triggerToast("Timetable slot removed.", "success");
+    } catch (err) {
+      console.error("Delete timetable slot failed:", err);
+      triggerToast("Failed to remove timetable slot from backend.", "error");
+    }
   };
 
   const renderPage = () => {

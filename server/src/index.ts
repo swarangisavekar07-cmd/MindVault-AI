@@ -100,11 +100,18 @@ app.get("/api/auth/profile", authMiddleware, async (req: AuthenticatedRequest, r
 });
 
 app.put("/api/auth/profile", authMiddleware, async (req: AuthenticatedRequest, res) => {
-  const { name, major, year } = req.body;
+  const { name, major, year, bio, interests } = req.body;
   try {
+    const updateData: any = {};
+    if (name !== undefined) updateData.name = name;
+    if (major !== undefined) updateData.major = major;
+    if (year !== undefined) updateData.year = year;
+    if (bio !== undefined) updateData.bio = bio;
+    if (interests !== undefined) updateData.interests = interests;
+
     const user = await prisma.user.update({
       where: { id: req.userId },
-      data: { name, major, year },
+      data: updateData,
     });
     const { password: _, ...userInfo } = user;
     res.json(userInfo);

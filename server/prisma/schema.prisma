@@ -14,6 +14,8 @@ model User {
   name      String
   major     String
   year      String
+  bio       String?
+  interests String?
   createdAt DateTime @default(now())
 
   subjects         Subject[]
